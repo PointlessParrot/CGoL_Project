@@ -2,14 +2,43 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CGoL_App"
+        xmlns:cc="clr-namespace:CGoL_App.CustomControls"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="CGoL_App.MainWindow"
         Title="CGoL_App">
     
-    <Grid RowDefinitions="Auto, *" ColumnDefinitions="*">
+    <Grid x:Name="MasterGrid" RowDefinitions="Auto, Auto" ColumnDefinitions="Auto">
         <TextBlock Grid.Row="0" Text="Hello World" HorizontalAlignment="Center"/>
         <SplitView Grid.Row="1">
-                <Grid x:Name="DisplayGrid" Background="Black" ShowGridLines="True"/>
+            <SplitView.Pane>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox IsReadOnly="True" Text="Height"/>
+                        <TextBox x:Name="HeightBox"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox IsReadOnly="True" Text="Width"/>
+                        <TextBox x:Name="WidthBox"/>
+                    </StackPanel>
+                    <Button x:Name="DimensionsButton" Content="Set Dimensions" Click="DimensionsButton_OnClick"/>
+                </StackPanel>
+            </SplitView.Pane>
+            <StackPanel HorizontalAlignment="Center">
+                <Border BorderBrush="Gray" BorderThickness="2">
+                    <Canvas x:Name="DisplayCanvas" Background="Black" PointerPressed="DisplayCanvas_OnPointerPressed"/>
+                </Border>
+                <StackPanel x:Name="Controls" Orientation="Horizontal" Margin="10" HorizontalAlignment="Center">
+                    <Button x:Name="StepButton" Content="Step" Click="StepButton_OnClick"
+                            Margin="10"/>
+                    <Button x:Name="StartButton" Content="Start"
+                            Margin="10"/>
+                    <Button x:Name="StopButton" Content="Stop"
+                            Margin="10"/>
+                    <Button x:Name="ResetButton" Content="Reset"
+                            Margin="10"/>
+                </StackPanel>
+            </StackPanel>
         </SplitView>
     </Grid>
     
