@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testbed", "Testbed\Testbed.csproj", "{FBF8A019-9E51-4600-A108-EB22413F6E83}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BasicGolApp", "BasicGolApp\BasicGolApp.csproj", "{292846A0-2E74-4E35-A90B-DFBD384DD08B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CGoL_App", "CGoL_App\CGoL_App.csproj", "{C0BA4F7A-4CD5-44AA-8ECA-30F47EBE67AA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FBF8A019-9E51-4600-A108-EB22413F6E83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FBF8A019-9E51-4600-A108-EB22413F6E83}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FBF8A019-9E51-4600-A108-EB22413F6E83}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FBF8A019-9E51-4600-A108-EB22413F6E83}.Release|Any CPU.Build.0 = Release|Any CPU
+		{292846A0-2E74-4E35-A90B-DFBD384DD08B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{292846A0-2E74-4E35-A90B-DFBD384DD08B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{292846A0-2E74-4E35-A90B-DFBD384DD08B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{292846A0-2E74-4E35-A90B-DFBD384DD08B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C0BA4F7A-4CD5-44AA-8ECA-30F47EBE67AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0BA4F7A-4CD5-44AA-8ECA-30F47EBE67AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0BA4F7A-4CD5-44AA-8ECA-30F47EBE67AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0BA4F7A-4CD5-44AA-8ECA-30F47EBE67AA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
