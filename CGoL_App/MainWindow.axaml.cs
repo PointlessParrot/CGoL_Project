@@ -1,10 +1,13 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Mime;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
-using System.Threading.Tasks;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
@@ -13,23 +16,95 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
-using CGoL_App.CustomControls;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace CGoL_App;
 
 public partial class MainWindow : Window
 {
-    static int xMin = 0, yMin = 0;
-    static int xLen = 64, yLen = 32;
+    int xMin = 0, yMin = 0;
+    int xLen = 64, yLen = 32;
+
+    int pix { get => pixHalf * 2; set => pixHalf = value / 2; }
+    int pixHalf = 6;
     
-    static int pix = 20;
-    static int pixHalf => pix / 2;
+    int iterationTime = 100;
+    int iterations; 
+    Subject<string> iterationOutput = new();
     
-    static bool running = false;
+    bool running;
+
+    Canvas cellCanvas => DisplayCanvas;
+
+    void Benchmark()
+    {
+        ToggleCell((0, 0));
+        ToggleCell((1, 0));
+        ToggleCell((4, 0));
+        ToggleCell((5, 0));
+        ToggleCell((6, 0));
+        ToggleCell((1, 2));
+        ToggleCell((3, 1));
+        
+        DrawCellsOnUI(cellCanvas);
+
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        int iterations = 0;
+        while (iterations < 5206)
+        {
+            iterations++;
+            IterateCells();
+        }
+        stopwatch.Stop();
+        Console.WriteLine($"Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+    }
     
     void ProgramLoop()
     {
+        while(true)
+        {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            
+            if (running)
+            {
+                IterateCells();
+                DrawCellsOnUI(cellCanvas);
+                
+                iterations++;
+                iterationOutput.OnNext($"Iteration: {iterations}");
+            }
+
+            if (cellsMain.Count == 0)
+            {
+                StartStopIteratingUI(false);
+                iterations = 0;
+            }
+            
+            WaitUntil(stopwatch, iterationTime);
+        }
+    }
+
+    void WaitUntil(Stopwatch stopwatch, int milliseconds)
+    {
+        while (stopwatch.ElapsedMilliseconds < milliseconds - 5)
+            Thread.Sleep(5);
+    }
+
+    void StartStopIteratingUI(bool start) =>
+        Dispatcher.UIThread.Invoke(() => StartStopIteratingRaw(start));
+    
+    void StartStopIteratingRaw(bool start)
+    {
+        StartButton.IsEnabled = !start;
+        StepButton.IsEnabled = !start;
+        ResetButton.IsEnabled = !start;
+        DimensionsButton.IsEnabled = !start;
+        cellCanvas.IsEnabled = !start;
         
+        StopButton.IsEnabled = start;
+        
+        running = start;
     }
     
     //--------------------------------------------
@@ -40,44 +115,32 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         
-        SetupCanvas(DisplayCanvas);
+        SetupCanvas(cellCanvas);
+        AddBindings();
 
-        Thread programLoopThread = new Thread(ProgramLoop);
+        Thread programLoopThread = new Thread(new ThreadStart(ProgramLoop));
         programLoopThread.Start();
     }
 
-    /*
-    static void SetupGrid(Grid cellGrid)
+    void AddBindings()
     {
-        cellGrid.Height = yLen * 4;
-        cellGrid.Width = xLen * 4;
-        cellGrid.RowDefinitions = new RowDefinitions(string.Join(",", new string[yLen].Select(_ => "*")));
-        cellGrid.ColumnDefinitions = new ColumnDefinitions(string.Join(",", new string[xLen].Select(_ => "*")));
-
-        for (int i = 0; i < yLen; i++)
-            for (int j = 0; j < xLen; j++)
-                cellGrid.Children.Add(new Cell
-                { 
-                    Name = $"Cell({i},{j})",
-                    [Grid.RowProperty] = yLen - i,
-                    [Grid.ColumnProperty] = 1 + j,
-                });
+        iterationOutput.OnNext("Iteration: 0");
+        IterationBox[!TextBox.TextProperty] = iterationOutput.ToBinding();
     }
-    */
 
-    static void SetupCanvas(Canvas cellCanvas)
+    void SetupCanvas(Canvas canvas)
     {
-        cellCanvas.Height = yLen * pix;
-        cellCanvas.Width = xLen * pix;
+        canvas.Height = yLen * pix;
+        canvas.Width = xLen * pix;
 
-        Border canvasBorder = (Border)cellCanvas.Parent!;
-        canvasBorder.Height = yLen * pix + 6;
-        canvasBorder.Width = xLen * pix + 6;
+        Border canvasBorder = (Border)canvas.Parent!;
+        canvasBorder.Height = yLen * pix + 4;
+        canvasBorder.Width = xLen * pix + 4;
         
-        cellCanvas.Children.Clear();
+        canvas.Children.Clear();
         
         for (int i = 0; i < (yLen + 1) * pix; i += pix)  
-            cellCanvas.Children.Add(new Line()
+            canvas.Children.Add(new Line()
             {
                 StartPoint = new Point(0, i),
                 EndPoint = new Point(xLen * pix, i),
@@ -86,7 +149,7 @@ public partial class MainWindow : Window
             });
         
         for (int j = 0; j < (xLen + 1) * pix; j += pix)  
-            cellCanvas.Children.Add(new Line()
+            canvas.Children.Add(new Line()
             {
                 StartPoint = new Point(j, 0),
                 EndPoint = new Point(j, yLen * pix),
@@ -97,16 +160,35 @@ public partial class MainWindow : Window
 
     //--------------------------------------------------
     // Avalonia Logic
+    
+    void SplitViewButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        SplitView? view = ((Control?)sender)?.FindAncestorOfType<SplitView>();
+        if (view != null) view.IsPaneOpen = !view.IsPaneOpen;
+    }
 
     void StepButton_OnClick(object? sender, RoutedEventArgs e)
     {
         IterateCells();
+        DrawCellsOnUI(cellCanvas);
     }
-    
-    void DisplayCanvas_OnTapped(object? sender, TappedEventArgs e)
+
+    void StartButton_OnClick(object? sender, RoutedEventArgs e)
     {
-        if (!running)
-            PointToggled(e.GetPosition((Visual?)sender));
+        StartStopIteratingRaw(true);
+    }
+
+    void StopButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        StartStopIteratingRaw(false);
+    }
+
+    void ResetButton_OnClick(object? sender, RoutedEventArgs e)
+    {
+        cellsMain.Clear();
+        DrawCellsOnUI(cellCanvas);
+        iterations = 0;
+        iterationOutput.OnNext("Iteration: 0");
     }
 
     void DisplayCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -117,18 +199,16 @@ public partial class MainWindow : Window
 
     void DimensionsButton_OnClick(object? sender, RoutedEventArgs e)
     {
-        if (!int.TryParse(HeightBox.Text, out int height) 
-            || !int.TryParse(WidthBox.Text, out int width))
-            return;
-        SetDimensions(width, height);
+        SetDimensions(WidthSlider.Value, HeightSlider.Value, PixelSlider.Value);
+        DrawCellsOnUI(cellCanvas);
     }
 
-    void SetDimensions(int x, int y)
+    void SetDimensions(double x, double y, double pixel)
     {
-        xLen = x;
-        yLen = y;
-        SetupCanvas(DisplayCanvas);
-        
+        xLen = (int)Math.Pow(2, (int)x);
+        yLen = (int)Math.Pow(2, (int)y);
+        pix = 3 * (int)Math.Pow(2, (int)pixel);
+        SetupCanvas(cellCanvas);
     }
     
     void PointToggled(Point p)
@@ -140,12 +220,28 @@ public partial class MainWindow : Window
         bool alive = ToggleCell((x + xMin, (yLen - y - 1) + yMin));
         
         if (alive)
-            FillCell(DisplayCanvas, x, y);
+            FillCellOnUI(cellCanvas, x, y);
         else
-            EmptyCell(DisplayCanvas, x, y);
+            EmptyCellOnUI(cellCanvas, x, y);
+        
+        Console.WriteLine("Toggled");
     }
 
-    void FillCell(Canvas canvas, int x, int y, ImmutableSolidColorBrush? fill = null, ImmutableSolidColorBrush? stroke = null)
+    void DrawCellsOnUI(Canvas canvas) =>
+        Dispatcher.UIThread.Invoke(() => DrawCellsRaw(canvas));
+    
+
+    void FillCellOnUI(Canvas canvas, int x, int y, 
+        ImmutableSolidColorBrush? fill = null, ImmutableSolidColorBrush? stroke = null) =>
+        Dispatcher.UIThread.Invoke(() => FillCellRaw(canvas, x, y, fill, stroke));
+    
+
+    void EmptyCellOnUI(Canvas canvas, int x, int y) =>
+        Dispatcher.UIThread.Invoke(() => EmptyCellRaw(canvas, x, y));
+    
+
+    void FillCellRaw(Canvas canvas, int x, int y, 
+        ImmutableSolidColorBrush? fill = null, ImmutableSolidColorBrush? stroke = null)
     {
         canvas.Children.Add(new Rectangle()
         {
@@ -160,7 +256,7 @@ public partial class MainWindow : Window
         });
     }
 
-    void EmptyCell(Canvas canvas, int x, int y)
+    void EmptyCellRaw(Canvas canvas, int x, int y)
     {
         Control? rect = canvas.Children.FirstOrDefault(item => item.Name == $"Cell({x},{y})");
         
@@ -168,22 +264,28 @@ public partial class MainWindow : Window
             canvas.Children.Remove(rect);
     }
 
-    void DrawCells(Canvas canvas)
+    void DrawCellsRaw(Canvas canvas)
     {
         IEnumerable<Control> cells = canvas.Children.Where(item => (item.Name ?? string.Empty).StartsWith("Cell"));
         canvas.Children.RemoveAll(cells);
-
-        foreach ((Coordinate coord, int _) in cellsMain)
-            FillCell(canvas, coord.x, coord.y);
+        
+        foreach ((Coordinate coord, int _) in cellsMain.Where(kvp => CoordinateInRange(kvp.Key)))
+            FillCellOnUI(canvas, coord.x + xMin, (yLen - coord.y - 1) + yMin);
     }
+
+    bool CoordinateInRange(Coordinate coord)
+    {
+        return coord.x >= xMin && coord.x <= xMin + xLen - 1 && coord.y >= yMin && coord.y <= yMin + yLen - 1;
+    }
+
 
     //---------------------------------------------------
     // Conway Logic
     
-    static Dictionary<Coordinate, int> cellsMain = new();
-    static Dictionary<Coordinate, int> cellsExtra = new();
+    Dictionary<Coordinate, int> cellsMain = new();
+    Dictionary<Coordinate, int> cellsExtra = new();
     
-    static (int, int)[] adjacentValues = [ (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1) ];
+    (int, int)[] adjacentValues = [ (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1) ];
     
     bool ToggleCell(Coordinate coord)
     {
@@ -247,4 +349,7 @@ public partial class MainWindow : Window
         LoadState(path);
         return true;
     }
+    
+    //-----------------------------------------------------
+    // Testing Code
 }
