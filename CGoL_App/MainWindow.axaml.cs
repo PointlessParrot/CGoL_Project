@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Mime;
-using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Data;
 using Avalonia.Input;
@@ -23,15 +21,15 @@ namespace CGoL_App;
 
 public partial class MainWindow : Window
 {
-    int xMin = 0, yMin = 0;
+    int xMin, yMin;
     int xLen = 64, yLen = 32;
 
-    int pix { get => pixHalf * 2; set => pixHalf = value / 2; }
-    int pixHalf = 6;
+    int pix => pixSixth * 6;
+    int pixHalf => pixSixth * 3;
+    int pixSixth = 4;
     
-    int iterationTime = 100;
-    int iterations; 
-    Subject<string> iterationOutput = new();
+    int iterationTime = 128;
+    ObservableString<int> iterations = null!; 
     
     bool running;
 
@@ -50,10 +48,9 @@ public partial class MainWindow : Window
         DrawCellsOnUI(cellCanvas);
 
         Stopwatch stopwatch = Stopwatch.StartNew();
-        int iterations = 0;
-        while (iterations < 5206)
+        while (iterations.Value < 5206)
         {
-            iterations++;
+            iterations.Value++;
             IterateCells();
         }
         stopwatch.Stop();
@@ -70,15 +67,13 @@ public partial class MainWindow : Window
             {
                 IterateCells();
                 DrawCellsOnUI(cellCanvas);
-                
-                iterations++;
-                iterationOutput.OnNext($"Iteration: {iterations}");
+
+                iterations.Value++;
             }
 
             if (cellsMain.Count == 0)
             {
                 StartStopIteratingUI(false);
-                iterations = 0;
             }
             
             WaitUntil(stopwatch, iterationTime);
@@ -100,7 +95,6 @@ public partial class MainWindow : Window
         StepButton.IsEnabled = !start;
         ResetButton.IsEnabled = !start;
         DimensionsButton.IsEnabled = !start;
-        cellCanvas.IsEnabled = !start;
         
         StopButton.IsEnabled = start;
         
@@ -116,16 +110,17 @@ public partial class MainWindow : Window
         InitializeComponent();
         
         SetupCanvas(cellCanvas);
+        UpdateCoordBlocksOnUI();
         AddBindings();
 
-        Thread programLoopThread = new Thread(new ThreadStart(ProgramLoop));
+        Thread programLoopThread = new Thread(ProgramLoop);
         programLoopThread.Start();
     }
 
     void AddBindings()
     {
-        iterationOutput.OnNext("Iteration: 0");
-        IterationBox[!TextBox.TextProperty] = iterationOutput.ToBinding();
+        iterations = new ObservableString<int>(0, value => $"Iteration: {value}");
+        IterationBlock[!TextBlock.TextProperty] = iterations.GetBinding();
     }
 
     void SetupCanvas(Canvas canvas)
@@ -186,28 +181,65 @@ public partial class MainWindow : Window
     void ResetButton_OnClick(object? sender, RoutedEventArgs e)
     {
         cellsMain.Clear();
+        iterations.Value = 0;
+        xMin = 0; 
+        yMin = 0;
         DrawCellsOnUI(cellCanvas);
-        iterations = 0;
-        iterationOutput.OnNext("Iteration: 0");
-    }
-
-    void DisplayCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        if (!running)
-            PointToggled(e.GetPosition((Visual?)sender));
+        UpdateCoordBlocksOnUI();
     }
 
     void DimensionsButton_OnClick(object? sender, RoutedEventArgs e)
     {
         SetDimensions(WidthSlider.Value, HeightSlider.Value, PixelSlider.Value);
         DrawCellsOnUI(cellCanvas);
+        UpdateCoordBlocksOnUI();
+    }
+
+    void SaveButton_OnClick(object? sender, RoutedEventArgs e) => 
+        SaveState($"{FileBox.Text ?? "save"}.bin");
+
+    void LoadButton_OnClick(object? sender, RoutedEventArgs e) => 
+        TryLoadState($"{FileBox.Text ?? "save"}.bin"); 
+
+    void DisplayCanvas_OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!running)
+            PointToggled(e.GetPosition((Visual?)sender));
+    }
+    
+    void DisplayCanvas_OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        bool isShift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        bool isCtrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        int change = (int)e.Delta.Y;
+
+        if (isCtrl)
+            change *= 16;
+        
+        if (isShift)
+            xMin += change;
+        else
+            yMin += change;
+        
+        DrawCellsOnUI(cellCanvas);
+        UpdateCoordBlocksOnUI();
+    }
+    
+    void SpeedSlider_OnValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        iterationTime = (int)Math.Pow(2, e.NewValue);
     }
 
     void SetDimensions(double x, double y, double pixel)
     {
+        xMin += xLen / 2;
+        yMin += yLen / 2;
         xLen = (int)Math.Pow(2, (int)x);
         yLen = (int)Math.Pow(2, (int)y);
-        pix = 3 * (int)Math.Pow(2, (int)pixel);
+        xMin -= xLen / 2;
+        yMin -= yLen / 2;
+        
+        pixSixth = (int)Math.Pow(2, (int)pixel);
         SetupCanvas(cellCanvas);
     }
     
@@ -223,24 +255,38 @@ public partial class MainWindow : Window
             FillCellOnUI(cellCanvas, x, y);
         else
             EmptyCellOnUI(cellCanvas, x, y);
-        
-        Console.WriteLine("Toggled");
     }
 
-    void DrawCellsOnUI(Canvas canvas) =>
-        Dispatcher.UIThread.Invoke(() => DrawCellsRaw(canvas));
+    void UpdateCoordBlocksOnUI() => 
+        Dispatcher.UIThread.Invoke(UpdateCoordBlocks);
     
+    void DrawCellsOnUI(Canvas canvas) => 
+        Dispatcher.UIThread.Invoke(() => DrawCells(canvas));
 
     void FillCellOnUI(Canvas canvas, int x, int y, 
         ImmutableSolidColorBrush? fill = null, ImmutableSolidColorBrush? stroke = null) =>
-        Dispatcher.UIThread.Invoke(() => FillCellRaw(canvas, x, y, fill, stroke));
-    
+        Dispatcher.UIThread.Invoke(() => FillCell(canvas, x, y, fill, stroke));
 
     void EmptyCellOnUI(Canvas canvas, int x, int y) =>
-        Dispatcher.UIThread.Invoke(() => EmptyCellRaw(canvas, x, y));
-    
+        Dispatcher.UIThread.Invoke(() => EmptyCell(canvas, x, y));
 
-    void FillCellRaw(Canvas canvas, int x, int y, 
+    void UpdateCoordBlocks()
+    {
+        XCoordsBlock.Text = $"x: {xMin} to {xMin + xLen - 1}";
+        YCoordsBlock.Text = $"y: {yMin} to {yMin + yLen - 1}";
+    }
+    
+    void DrawCells(Canvas canvas)
+    {
+        IEnumerable<Control> cells = canvas.Children.Where(item => (item.Name ?? string.Empty).StartsWith("Cell"));
+        canvas.Children.RemoveAll(cells);
+        
+        
+        foreach ((Coordinate coord, int _) in cellsMain.Where(kvp => CoordinateInRange(kvp.Key)))
+            FillCellOnUI(canvas, coord.x - xMin, (yLen - coord.y - 1) + yMin);
+    }
+
+    void FillCell(Canvas canvas, int x, int y, 
         ImmutableSolidColorBrush? fill = null, ImmutableSolidColorBrush? stroke = null)
     {
         canvas.Children.Add(new Rectangle()
@@ -256,21 +302,12 @@ public partial class MainWindow : Window
         });
     }
 
-    void EmptyCellRaw(Canvas canvas, int x, int y)
+    void EmptyCell(Canvas canvas, int x, int y)
     {
         Control? rect = canvas.Children.FirstOrDefault(item => item.Name == $"Cell({x},{y})");
         
         if (rect != null)
             canvas.Children.Remove(rect);
-    }
-
-    void DrawCellsRaw(Canvas canvas)
-    {
-        IEnumerable<Control> cells = canvas.Children.Where(item => (item.Name ?? string.Empty).StartsWith("Cell"));
-        canvas.Children.RemoveAll(cells);
-        
-        foreach ((Coordinate coord, int _) in cellsMain.Where(kvp => CoordinateInRange(kvp.Key)))
-            FillCellOnUI(canvas, coord.x + xMin, (yLen - coord.y - 1) + yMin);
     }
 
     bool CoordinateInRange(Coordinate coord)
@@ -316,9 +353,22 @@ public partial class MainWindow : Window
 
     bool DeadRule(int neighbours) => neighbours is 3;
     
-    void SaveState(string path)
+    //------------------------------------------------------------
+    // General 
+
+    static string saveFolderPath = System.IO.Path.Combine(Directory.GetCurrentDirectory(), "savefiles");
+    
+    void SaveState(string fileName)
     {
+        StartStopIteratingUI(false);
+        Thread.Sleep(iterationTime);
+        
+        if (!Directory.Exists(saveFolderPath))
+            Directory.CreateDirectory(saveFolderPath);
+        
+        string path = System.IO.Path.Combine(saveFolderPath, fileName);    
         using BinaryWriter sw = new BinaryWriter(File.Open(path, FileMode.Create));
+        sw.Write7BitEncodedInt(iterations.Value);
         sw.Write7BitEncodedInt(cellsMain.Count);
         foreach ((Coordinate c, int _) in cellsMain)
         {
@@ -327,11 +377,19 @@ public partial class MainWindow : Window
         }
     }
 
-    void LoadState(string path)
+    void LoadState(string fileName)
     {
+        if (!File.Exists(System.IO.Path.Combine(saveFolderPath, fileName)))
+            return;
+        
+        StartStopIteratingUI(false);
+        Thread.Sleep(iterationTime);
+        
         cellsMain.Clear();
         
+        string path = System.IO.Path.Combine(saveFolderPath, fileName);
         using BinaryReader sw = new BinaryReader(File.Open(path, FileMode.Open));
+        iterations.Value = sw.Read7BitEncodedInt();
         int count = sw.Read7BitEncodedInt();
         for (int i = 0; i < count; i++)
         {
@@ -339,17 +397,51 @@ public partial class MainWindow : Window
             int y = sw.Read7BitEncodedInt();
             cellsMain.Add(new Coordinate(x, y), 0);
         }
+        
+        DrawCellsOnUI(cellCanvas);
     }
 
-    bool TryLoadState(string path)
+    void TryLoadState(string fileName)
     {
-        if (!File.Exists(path))
-            return false;
+        if (!File.Exists(System.IO.Path.Combine(saveFolderPath, fileName)))
+            return;
         
-        LoadState(path);
-        return true;
+        LoadState(fileName);
+        DrawCellsOnUI(cellCanvas);
     }
     
     //-----------------------------------------------------
     // Testing Code
+    
+    //-----------------------------------------------------
+    // Classes & Structs
+
+    public class ObservableString<T>
+    {
+        Func<T, string> toString;
+        T value;
+        Subject<string> source;
+
+        public ObservableString(T value, Func<T, string>? toString = null)
+        {
+            this.value = value;
+            this.toString = toString ??  (x => x!.ToString()!);
+            source = new Subject<string>();
+            source.OnNext(this.toString(this.value));
+        }
+
+        void UpdateValue(T value)
+        {
+            this.value = value;
+            source.OnNext(this.toString(this.value));
+        }
+
+        public T Value
+        {
+            get => value;
+            set => UpdateValue(value);
+        }
+
+        public IBinding GetBinding() => source.ToBinding();
+    }
 }

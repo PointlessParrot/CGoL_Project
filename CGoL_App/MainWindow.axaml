@@ -5,8 +5,8 @@
         xmlns:local="clr-namespace:CGoL_App"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="CGoL_App.MainWindow"
-        Title="CGoL_App">
-    <SplitView x:Name="MainSplitView" IsPaneOpen="True" >
+        Title="CGoL_App" WindowState="FullScreen">
+    <SplitView x:Name="MainSplitView" IsPaneOpen="False">
         <SplitView.Pane>
             <StackPanel>
                 <Button HorizontalAlignment="Right" VerticalAlignment="Top" 
@@ -15,40 +15,52 @@
                            Margin="0 0 0 100" Text="Menu" FontWeight="Bold" FontSize="20"/>
                 <Border HorizontalAlignment="Center" VerticalAlignment="Bottom" Width="200" Height="200"
                         BorderBrush="Gray" BorderThickness="2">
-                    <Grid HorizontalAlignment="Center" RowDefinitions="Auto, Auto, Auto, Auto"
-                          ColumnDefinitions="*, *" x:Name="DimensionsPanel" >
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Cell size" Margin="5 10 5 5" 
-                                   VerticalAlignment="Center"/>
-                        <Slider Grid.Row="0" Grid.Column="1" x:Name="PixelSlider" Margin="5" 
-                                Width="100" Height="40" Minimum="1" Maximum="4" 
-                                TickFrequency="1" IsSnapToTickEnabled="True"/>
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Height" Margin="5 10 5 5" 
-                                   VerticalAlignment="Center"/>
-                        <Slider Grid.Row="1" Grid.Column="1" x:Name="HeightSlider" Margin="5" 
-                                Width="100" Height="40" Minimum="4" Maximum="7" 
-                                TickFrequency="1" IsSnapToTickEnabled="True"/>
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Width" Margin="5 10 5 5" 
-                                   VerticalAlignment="Center"/>
-                        <Slider Grid.Row="2" Grid.Column="1" x:Name="WidthSlider" Margin="5" 
-                                Width="100" Height="40" Minimum="5" Maximum="8"  
-                                TickFrequency="1" IsSnapToTickEnabled="True"/>
-                        <Button Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" x:Name="DimensionsButton" 
+                    <StackPanel HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Cell size" Margin="0 10 0 0" Width="70" 
+                                       VerticalAlignment="Center"/>
+                            <Slider x:Name="PixelSlider" Margin="5" Width="80" Height="40" Value="2"
+                                    Minimum="0" Maximum="3" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Height" Margin="0 10 0 0" Width="70" 
+                                       VerticalAlignment="Center"/>
+                            <Slider x:Name="HeightSlider" Margin="5" Width="80" Height="40" Value="5"
+                                    Minimum="4" Maximum="7" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Width" Margin="0 10 0 0" Width="70" 
+                                       VerticalAlignment="Center"/>
+                            <Slider x:Name="WidthSlider" Margin="5" Width="80" Height="40" Value="6"
+                                    Minimum="5" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                        </StackPanel>
+                        <Button x:Name="DimensionsButton" 
                                 Margin="5" HorizontalAlignment="Center" Content="Set Dimensions" 
                                 Click="DimensionsButton_OnClick"/>
-                    </Grid>
+                    </StackPanel>
                 </Border>
             </StackPanel>
         </SplitView.Pane>
-        <StackPanel>
+        <StackPanel >
             <Button HorizontalAlignment="Left" VerticalAlignment="Top" 
                     Content="Expand" FontSize="10" Margin="10" Click="SplitViewButton_OnClick"/>
-            <Border BorderBrush="Gray" BorderThickness="2">
-                    <Canvas x:Name="DisplayCanvas" Background="Black" PointerPressed="DisplayCanvas_OnPointerPressed"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10" Spacing="100">
+                <TextBlock x:Name="XCoordsBlock"/>
+                <TextBlock x:Name="YCoordsBlock"/>
+            </StackPanel> 
+            <Border BorderBrush="Gray" BorderThickness="2" VerticalAlignment="Bottom">
+                    <Canvas x:Name="DisplayCanvas" Background="Black" PointerWheelChanged="DisplayCanvas_OnPointerWheelChanged" PointerPressed="DisplayCanvas_OnPointerPressed"/>
             </Border>
-            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="250">
-                <TextBox x:Name="IterationBox" IsReadOnly="True" TextAlignment="Left"
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="150">
+                <TextBlock x:Name="IterationBlock" TextAlignment="Left"
                          HorizontalAlignment="Center" VerticalAlignment="Top" Width="120" Height="20" Margin="20"/>
-                <StackPanel x:Name="Controls" Orientation="Horizontal" 
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="speed" Margin="5 10 5 5" VerticalAlignment="Center"/>
+                    <Slider x:Name="SpeedSlider" Margin="5" Width="100" Height="40" IsDirectionReversed="True"  
+                            Minimum="4" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" 
+                            ValueChanged="SpeedSlider_OnValueChanged" Value="8"/>
+                </StackPanel>
+                <StackPanel x:Name="ControlsPanel" Orientation="Horizontal" 
                             Height="60" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Top">
                     <Button x:Name="StepButton" Content="Step" Click="StepButton_OnClick"
                             Margin="10 0"/>
@@ -59,9 +71,20 @@
                     <Button x:Name="ResetButton" Content="Reset" Click="ResetButton_OnClick"
                             Margin="10 0"/>
                 </StackPanel>
+                <StackPanel x:Name="FileIoPanel" Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="File name" Margin="0 10 0 0" Height="20" Width="70" 
+                                   VerticalAlignment="Center"/>
+                        <TextBox x:Name="FileBox" Margin="5" Width="80" Height="20"/>
+                    </StackPanel>
+                    <Button x:Name="SaveButton" 
+                            Margin="5" HorizontalAlignment="Center" Content="Save" 
+                            Click="SaveButton_OnClick"/>
+                    <Button x:Name="LoadButton" 
+                            Margin="5" HorizontalAlignment="Center" Content="Load" 
+                            Click="LoadButton_OnClick"/>
+                </StackPanel>
             </StackPanel>
-            <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20" RowDefinitions="Auto, Auto" ColumnDefinitions="*, *, *">
-            </Grid>
         </StackPanel>
     </SplitView>
     
