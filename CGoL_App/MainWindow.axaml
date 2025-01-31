@@ -2,15 +2,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:CGoL_App"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="CGoL_App.MainWindow"
-        Title="CGoL_App" WindowState="FullScreen">
+        x:Class="CGoL_App.MainWindow" WindowState="FullScreen" Title="CGoL_App">
+    
     <SplitView x:Name="MainSplitView" IsPaneOpen="False">
         <SplitView.Pane>
             <StackPanel>
-                <Button HorizontalAlignment="Right" VerticalAlignment="Top" 
-                        Content="Collapse" FontSize="10" Margin="10 10 10 0" Click="SplitViewButton_OnClick"/>
+                <Button HorizontalAlignment="Right" VerticalAlignment="Top" Content="Collapse" 
+                        FontSize="10" Margin="10" Click="SplitViewButton_OnClick"/>
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Top"
                            Margin="0 0 0 100" Text="Menu" FontWeight="Bold" FontSize="20"/>
                 <Border HorizontalAlignment="Center" VerticalAlignment="Bottom" Width="200" Height="200"
@@ -34,16 +33,57 @@
                             <Slider x:Name="WidthSlider" Margin="5" Width="80" Height="40" Value="6"
                                     Minimum="5" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"/>
                         </StackPanel>
-                        <Button x:Name="DimensionsButton" 
-                                Margin="5" HorizontalAlignment="Center" Content="Set Dimensions" 
-                                Click="DimensionsButton_OnClick"/>
+                        <Button x:Name="DimensionsButton" Margin="5" HorizontalAlignment="Center" 
+                                Content="Set Dimensions" Click="DimensionsButton_OnClick"/>
+                    </StackPanel>
+                </Border>
+                <Border HorizontalAlignment="Center" VerticalAlignment="Bottom" Width="200" Height="500"
+                        BorderBrush="Gray" BorderThickness="2" Margin="0 100">
+                    <StackPanel Spacing="20">
+                        
+                        <TextBlock Text="Alive Rule" HorizontalAlignment="Center" Margin="0 20 0 0"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock Text="Min:" VerticalAlignment="Center"/>
+                            <TextBlock Width="30" VerticalAlignment="Center" Margin="10 0 0 0" 
+                                       Text="{Binding Value, ElementName=AliveMinSlider}"/>
+                            <Slider x:Name="AliveMinSlider" IsSnapToTickEnabled="True" TickFrequency="1" Width="80"
+                                    Minimum="1" Maximum="8" Value="2" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock Text="Max:" VerticalAlignment="Center"/>
+                            <TextBlock Width="30" VerticalAlignment="Center" Margin="10 0 0 0" 
+                                       Text="{Binding Value, ElementName=AliveMaxSlider}"/>
+                            <Slider x:Name="AliveMaxSlider" IsSnapToTickEnabled="True" TickFrequency="1" Width="80" 
+                                    Minimum="{Binding Value, ElementName=AliveMinSlider}" Maximum="8"
+                                    Value="3" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        
+                        <TextBlock Text="Dead Rule" HorizontalAlignment="Center" Margin="0 30 0 0"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock Text="Min:" VerticalAlignment="Center"/>
+                            <TextBlock Width="30" VerticalAlignment="Center" Margin="10 0 0 0"
+                                       Text="{Binding Value, ElementName=DeadMinSlider}"/>
+                            <Slider x:Name="DeadMinSlider" IsSnapToTickEnabled="True" TickFrequency="1" Width="80"
+                                    Minimum="1" Maximum="8" Value="3" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock Text="Max:" VerticalAlignment="Center"/>
+                            <TextBlock Width="30" VerticalAlignment="Center" Margin="10 0 0 0" 
+                                       Text="{Binding Value, ElementName=DeadMaxSlider}"/>
+                            <Slider x:Name="DeadMaxSlider" IsSnapToTickEnabled="True" TickFrequency="1" Width="80" 
+                                    Minimum="{Binding Value, ElementName=DeadMinSlider}" Maximum="8"
+                                    Value="3" VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <Button x:Name="RulesButton" Margin="0 30 0 0" HorizontalAlignment="Center" 
+                            Content="Set Rules" Click="RulesButton_OnClick"/>
                     </StackPanel>
                 </Border>
             </StackPanel>
         </SplitView.Pane>
         <StackPanel >
-            <Button HorizontalAlignment="Left" VerticalAlignment="Top" 
-                    Content="Expand" FontSize="10" Margin="10" Click="SplitViewButton_OnClick"/>
+            <Button HorizontalAlignment="Left" VerticalAlignment="Top" Content="Expand" 
+                    FontSize="10" Margin="10" Click="SplitViewButton_OnClick"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="10" Spacing="100">
                 <TextBlock x:Name="XCoordsBlock"/>
                 <TextBlock x:Name="YCoordsBlock"/>
@@ -51,38 +91,36 @@
             <Border BorderBrush="Gray" BorderThickness="2" VerticalAlignment="Bottom">
                     <Canvas x:Name="DisplayCanvas" Background="Black" PointerWheelChanged="DisplayCanvas_OnPointerWheelChanged" PointerPressed="DisplayCanvas_OnPointerPressed"/>
             </Border>
-            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="150">
-                <TextBlock x:Name="IterationBlock" TextAlignment="Left"
-                         HorizontalAlignment="Center" VerticalAlignment="Top" Width="120" Height="20" Margin="20"/>
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal" Spacing="50">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="speed" Margin="5 10 5 5" VerticalAlignment="Center"/>
-                    <Slider x:Name="SpeedSlider" Margin="5" Width="100" Height="40" IsDirectionReversed="True"  
-                            Minimum="4" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" 
-                            ValueChanged="SpeedSlider_OnValueChanged" Value="8"/>
+                    <TextBlock x:Name="IterationBlock" VerticalAlignment="Center" Margin="5" Width="120"/>
                 </StackPanel>
-                <StackPanel x:Name="ControlsPanel" Orientation="Horizontal" 
-                            Height="60" Margin="5" HorizontalAlignment="Center" VerticalAlignment="Top">
-                    <Button x:Name="StepButton" Content="Step" Click="StepButton_OnClick"
-                            Margin="10 0"/>
-                    <Button x:Name="StartButton" Content="Start" Click="StartButton_OnClick"
-                            Margin="10 0"/>
-                    <Button x:Name="StopButton" Content="Stop" Click="StopButton_OnClick"
-                            Margin="10 0"/>
-                    <Button x:Name="ResetButton" Content="Reset" Click="ResetButton_OnClick"
-                            Margin="10 0"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="speed" VerticalAlignment="Center" Margin="5"/>
+                    <Slider x:Name="SpeedSlider" Margin="0" Width="100" Height="50" IsDirectionReversed="True"  
+                            Minimum="4" Maximum="10" TickFrequency="1" IsSnapToTickEnabled="True" 
+                            VerticalAlignment="Center" ValueChanged="SpeedSlider_OnValueChanged" Value="8"/>
+                </StackPanel>
+                <StackPanel x:Name="ControlsPanel" Orientation="Horizontal" Height="60" Margin="5" 
+                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button x:Name="StepButton" Content="Step" Margin="10 0" Click="StepButton_OnClick"/>
+                    <Button x:Name="StartButton" Content="Start" Margin="10 0" Click="StartButton_OnClick"/>
+                    <Button x:Name="StopButton" Content="Stop" Margin="10 0" Click="StopButton_OnClick"/>
+                    <Button x:Name="ResetButton" Content="Reset" Margin="10 0" Click="ResetButton_OnClick"/>
                 </StackPanel>
                 <StackPanel x:Name="FileIoPanel" Orientation="Horizontal">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="File name" Margin="0 10 0 0" Height="20" Width="70" 
-                                   VerticalAlignment="Center"/>
+                        <TextBlock Text="File name" Margin="0" Height="20" Width="70" VerticalAlignment="Center"/>
                         <TextBox x:Name="FileBox" Margin="5" Width="80" Height="20"/>
                     </StackPanel>
-                    <Button x:Name="SaveButton" 
-                            Margin="5" HorizontalAlignment="Center" Content="Save" 
-                            Click="SaveButton_OnClick"/>
-                    <Button x:Name="LoadButton" 
-                            Margin="5" HorizontalAlignment="Center" Content="Load" 
-                            Click="LoadButton_OnClick"/>
+                    <Button x:Name="SaveButton" Margin="5" HorizontalAlignment="Center" 
+                            Content="Save" Click="SaveButton_OnClick"/>
+                    <Button x:Name="LoadButton" Margin="5" HorizontalAlignment="Center" 
+                            Content="Load" Click="LoadButton_OnClick"/>
+                    <ComboBox x:Name="FileTypeSelector" SelectedIndex="0">
+                        <ComboBoxItem Content=".bin"/>
+                        <ComboBoxItem Content=".life"/>
+                    </ComboBox>
                 </StackPanel>
             </StackPanel>
         </StackPanel>
